@@ -142,9 +142,10 @@ class WaveNetModel(object):
                 with tf.variable_scope('embeddings'):
                     layer = dict()
                     layer['gc_embedding'] = create_embedding_table(
-                        'gc_embedding',
-                        [self.global_condition_cardinality,
-                         self.global_condition_channels])
+                        'gc_embedding', [
+                            self.global_condition_cardinality,
+                            self.global_condition_channels
+                        ])
                     var['embeddings'] = layer
 
             with tf.variable_scope('causal_layer'):
@@ -155,11 +156,10 @@ class WaveNetModel(object):
                 else:
                     initial_channels = self.quantization_channels
                     initial_filter_width = self.filter_width
-                layer['filter'] = create_variable(
-                    'filter',
-                    [initial_filter_width,
-                     initial_channels,
-                     self.residual_channels])
+                layer['filter'] = create_variable('filter', [
+                    initial_filter_width, initial_channels,
+                    self.residual_channels
+                ])
                 var['causal_layer'] = layer
 
             var['dilated_stack'] = list()
@@ -168,49 +168,45 @@ class WaveNetModel(object):
                     with tf.variable_scope('layer{}'.format(i)):
                         current = dict()
                         current['filter'] = create_variable(
-                            'filter',
-                            [self.filter_width,
-                             self.residual_channels,
-                             self.dilation_channels])
+                            'filter', [
+                                self.filter_width, self.residual_channels,
+                                self.dilation_channels
+                            ])
                         current['gate'] = create_variable(
-                            'gate',
-                            [self.filter_width,
-                             self.residual_channels,
-                             self.dilation_channels])
+                            'gate', [
+                                self.filter_width, self.residual_channels,
+                                self.dilation_channels
+                            ])
                         current['dense'] = create_variable(
-                            'dense',
-                            [1,
-                             self.dilation_channels,
-                             self.residual_channels])
+                            'dense', [
+                                1, self.dilation_channels,
+                                self.residual_channels
+                            ])
                         current['skip'] = create_variable(
                             'skip',
-                            [1,
-                             self.dilation_channels,
-                             self.skip_channels])
+                            [1, self.dilation_channels, self.skip_channels])
 
                         if self.global_condition_channels is not None:
                             current['gc_gateweights'] = create_variable(
-                                'gc_gate',
-                                [1, self.global_condition_channels,
-                                 self.dilation_channels])
+                                'gc_gate', [
+                                    1, self.global_condition_channels,
+                                    self.dilation_channels
+                                ])
                             current['gc_filtweights'] = create_variable(
-                                'gc_filter',
-                                [1, self.global_condition_channels,
-                                 self.dilation_channels])
+                                'gc_filter', [
+                                    1, self.global_condition_channels,
+                                    self.dilation_channels
+                                ])
 
                         if self.use_biases:
                             current['filter_bias'] = create_bias_variable(
-                                'filter_bias',
-                                [self.dilation_channels])
+                                'filter_bias', [self.dilation_channels])
                             current['gate_bias'] = create_bias_variable(
-                                'gate_bias',
-                                [self.dilation_channels])
+                                'gate_bias', [self.dilation_channels])
                             current['dense_bias'] = create_bias_variable(
-                                'dense_bias',
-                                [self.residual_channels])
+                                'dense_bias', [self.residual_channels])
                             current['skip_bias'] = create_bias_variable(
-                                'slip_bias',
-                                [self.skip_channels])
+                                'slip_bias', [self.skip_channels])
 
                         var['dilated_stack'].append(current)
 
@@ -224,11 +220,9 @@ class WaveNetModel(object):
                     [1, self.skip_channels, self.quantization_channels])
                 if self.use_biases:
                     current['postprocess1_bias'] = create_bias_variable(
-                        'postprocess1_bias',
-                        [self.skip_channels])
+                        'postprocess1_bias', [self.skip_channels])
                     current['postprocess2_bias'] = create_bias_variable(
-                        'postprocess2_bias',
-                        [self.quantization_channels])
+                        'postprocess2_bias', [self.quantization_channels])
                 var['postprocessing'] = current
 
         return var
@@ -280,17 +274,19 @@ class WaveNetModel(object):
 
         if global_condition_batch is not None:
             weights_gc_filter = variables['gc_filtweights']
-            conv_filter = conv_filter + tf.nn.conv1d(global_condition_batch,
-                                                     weights_gc_filter,
-                                                     stride=1,
-                                                     padding="SAME",
-                                                     name="gc_filter")
+            conv_filter = conv_filter + tf.nn.conv1d(
+                global_condition_batch,
+                weights_gc_filter,
+                stride=1,
+                padding="SAME",
+                name="gc_filter")
             weights_gc_gate = variables['gc_gateweights']
-            conv_gate = conv_gate + tf.nn.conv1d(global_condition_batch,
-                                                 weights_gc_gate,
-                                                 stride=1,
-                                                 padding="SAME",
-                                                 name="gc_gate")
+            conv_gate = conv_gate + tf.nn.conv1d(
+                global_condition_batch,
+                weights_gc_gate,
+                stride=1,
+                padding="SAME",
+                name="gc_gate")
 
         if self.use_biases:
             filter_bias = variables['filter_bias']
@@ -347,8 +343,8 @@ class WaveNetModel(object):
     def _generator_causal_layer(self, input_batch, state_batch):
         with tf.name_scope('causal_layer'):
             weights_filter = self.variables['causal_layer']['filter']
-            output = self._generator_conv(
-                input_batch, state_batch, weights_filter)
+            output = self._generator_conv(input_batch, state_batch,
+                                          weights_filter)
         return output
 
     def _generator_dilation_layer(self, input_batch, state_batch, layer_index,
@@ -357,22 +353,21 @@ class WaveNetModel(object):
 
         weights_filter = variables['filter']
         weights_gate = variables['gate']
-        output_filter = self._generator_conv(
-            input_batch, state_batch, weights_filter)
-        output_gate = self._generator_conv(
-            input_batch, state_batch, weights_gate)
+        output_filter = self._generator_conv(input_batch, state_batch,
+                                             weights_filter)
+        output_gate = self._generator_conv(input_batch, state_batch,
+                                           weights_gate)
 
         if global_condition_batch is not None:
-            global_condition_batch = tf.reshape(global_condition_batch,
-                                                shape=(1, -1))
+            global_condition_batch = tf.reshape(
+                global_condition_batch, shape=(1, -1))
             weights_gc_filter = variables['gc_filtweights']
             weights_gc_filter = weights_gc_filter[0, :, :]
             output_filter += tf.matmul(global_condition_batch,
                                        weights_gc_filter)
             weights_gc_gate = variables['gc_gateweights']
             weights_gc_gate = weights_gc_gate[0, :, :]
-            output_gate += tf.matmul(global_condition_batch,
-                                     weights_gc_gate)
+            output_gate += tf.matmul(global_condition_batch, weights_gc_gate)
 
         if self.use_biases:
             output_filter = output_filter + variables['filter_bias']
@@ -460,8 +455,8 @@ class WaveNetModel(object):
         init_ops.append(init)
         push_ops.append(push)
 
-        current_layer = self._generator_causal_layer(
-                            current_layer, current_state)
+        current_layer = self._generator_causal_layer(current_layer,
+                                                     current_state)
 
         # Add all defined dilation layers.
         with tf.name_scope('dilated_stack'):
@@ -553,9 +548,9 @@ class WaveNetModel(object):
                           self.global_condition_channels)
             if not dims_match:
                 raise ValueError('Shape of global_condition {} does not'
-                                 ' match global_condition_channels {}.'.
-                                 format(global_condition.get_shape(),
-                                        self.global_condition_channels))
+                                 ' match global_condition_channels {}.'.format(
+                                     global_condition.get_shape(),
+                                     self.global_condition_channels))
             embedding = global_condition
 
         if embedding is not None:
@@ -583,13 +578,13 @@ class WaveNetModel(object):
             # Cast to float64 to avoid bug in TensorFlow
             proba = tf.cast(
                 tf.nn.softmax(tf.cast(out, tf.float64)), tf.float32)
-            last = tf.slice(
-                proba,
-                [tf.shape(proba)[0] - 1, 0],
-                [1, self.quantization_channels])
+            last = tf.slice(proba, [tf.shape(proba)[0] - 1, 0],
+                            [1, self.quantization_channels])
             return tf.reshape(last, [-1])
 
-    def predict_proba_incremental(self, waveform, global_condition=None,
+    def predict_proba_incremental(self,
+                                  waveform,
+                                  global_condition=None,
                                   name='wavenet'):
         '''Computes the probability distribution of the next sample
         incrementally, based on a single sample and all previously passed
@@ -608,10 +603,8 @@ class WaveNetModel(object):
             out = tf.reshape(raw_output, [-1, self.quantization_channels])
             proba = tf.cast(
                 tf.nn.softmax(tf.cast(out, tf.float64)), tf.float32)
-            last = tf.slice(
-                proba,
-                [tf.shape(proba)[0] - 1, 0],
-                [1, self.quantization_channels])
+            last = tf.slice(proba, [tf.shape(proba)[0] - 1, 0],
+                            [1, self.quantization_channels])
             return tf.reshape(last, [-1])
 
     def loss(self,
@@ -632,8 +625,7 @@ class WaveNetModel(object):
             encoded = self._one_hot(encoded_input)
             if self.scalar_input:
                 network_input = tf.reshape(
-                    tf.cast(input_batch, tf.float32),
-                    [self.batch_size, -1, 1])
+                    tf.cast(input_batch, tf.float32), [self.batch_size, -1, 1])
             else:
                 network_input = encoded
 
@@ -651,15 +643,13 @@ class WaveNetModel(object):
                     tf.reshape(
                         encoded,
                         [self.batch_size, -1, self.quantization_channels]),
-                    [0, self.receptive_field, 0],
-                    [-1, -1, -1])
+                    [0, self.receptive_field, 0], [-1, -1, -1])
                 target_output = tf.reshape(target_output,
                                            [-1, self.quantization_channels])
                 prediction = tf.reshape(raw_output,
                                         [-1, self.quantization_channels])
                 loss = tf.nn.softmax_cross_entropy_with_logits(
-                    logits=prediction,
-                    labels=target_output)
+                    logits=prediction, labels=target_output)
                 reduced_loss = tf.reduce_mean(loss)
 
                 tf.summary.scalar('loss', reduced_loss)
@@ -668,15 +658,207 @@ class WaveNetModel(object):
                     return reduced_loss
                 else:
                     # L2 regularization for all trainable parameters
-                    l2_loss = tf.add_n([tf.nn.l2_loss(v)
-                                        for v in tf.trainable_variables()
-                                        if not('bias' in v.name)])
+                    l2_loss = tf.add_n([
+                        tf.nn.l2_loss(v) for v in tf.trainable_variables()
+                        if not ('bias' in v.name)
+                    ])
 
                     # Add the regularization term to the loss
-                    total_loss = (reduced_loss +
-                                  l2_regularization_strength * l2_loss)
+                    total_loss = (
+                        reduced_loss + l2_regularization_strength * l2_loss)
 
                     tf.summary.scalar('l2_loss', l2_loss)
                     tf.summary.scalar('total_loss', total_loss)
 
                     return total_loss
+
+
+class MidiNetModel(WaveNetModel):
+    """
+    Version of the Wavenet with the output tailored towards a very specific
+    midi representation. Assumes a 4 component representation:
+    - note number
+    - velocity
+    - note length
+    - onset delta
+
+    All of the functions will accept/return _dicts_ of tensors with
+    corresponding keys:
+    - note
+    - vel
+    - len
+    - delta
+
+    We assume each of these components covers a small enough range that we can
+    softmax over them independently.
+    """
+
+    def __init__(self,
+                 *args,
+                 num_notes=8,
+                 num_velocity_steps=32,
+                 num_length_steps=4,
+                 num_delta_steps=64,
+                 **kwargs):
+        """
+        Pass all the arguments through except for `num_notes`,
+        `num_velocity_steps`, `num_length_steps` and `num_delta_steps` which
+        are specific to the new structure.
+        """
+        if kwargs.get('scalar_input'):
+            raise ValueError('MidiNet can not handle scalar input')
+        # pretend to the base class we're just quantizing audio with this many
+        # outputs and we'll handle the packing/unpacking ourselves
+        output_channels = (num_notes + num_velocity_steps + num_delta_steps +
+                           num_length_steps)
+        kwargs['quantization_channels'] = output_channels
+        super(MidiNetModel, self).__init__(*args, **kwargs)
+        self.num_notes = num_notes
+        self.num_velocity_steps = num_velocity_steps
+        self.num_length_steps = num_length_steps
+        self.num_delta_steps = num_delta_steps
+        self.component_sizes = {
+            'note': num_notes,
+            'vel': num_velocity_steps,
+            'len': num_length_steps,
+            'delta': num_delta_steps
+        }
+        # set this here to control the internal ordering of the components
+        # when we stick them together
+        self.components = ['note', 'vel', 'len', 'delta']
+
+    def _glue_notes(self, seqs):
+        """
+        Glue a dictionary of note components together along the last axis.
+        Assumes they've already been transformed to one-hots.
+        """
+        return tf.concat([seqs[k] for k in self.components], -1)
+
+    def _unglue_notes(self, notes):
+        """
+        Unglue some note vectors by splitting along the last dimension.
+        Assumes they have been glued with `self._glue_notes` and that the order
+        sizes are in `self.component_sizes`.
+        """
+        pos = 0
+        results = {}
+        for comp in self.components:
+            results[comp] = notes[..., pos:pos + self.component_sizes[comp]]
+            pos += self.component_sizes[comp]
+        return results
+
+    def predict_proba(self, seq, global_condition=None, name='midinet'):
+        """Computes the probability distribution of the next note based on all
+        the notes in the input sequence.
+
+        The incremental version should be faster for generating from scratch.
+
+        `seq` should be a dict with the each of the keys as described in this
+        class's docstring corresponding to separated input sequences for the
+        different components. This function returns a similarly structured dict
+        where each key corresponds to the categorical likelihoods of the next
+        item for each component.
+        """
+        with tf.name_scope(name):
+            encoded = self._glue_notes(seq)
+
+            gc_embedding = self._embed_gc(global_condition)
+            raw_output = self._create_network(encoded, gc_embedding)
+            out = self._unglue_notes(raw_output)
+            logits = {k: tf.reshape(v[-1, :], [-1]) for k, v in out.items()}
+            return {
+                k: tf.cast(tf.nn.softmax(tf.cast(v, tf.float64)), tf.float32)
+                for k, v in logits.items()
+            }
+
+    def predict_proba_incremental(self,
+                                  seq,
+                                  global_condition=None,
+                                  name='midinet'):
+        """Computes the probability distribution of the next note based on all
+        the notes in the input sequence.
+
+        Should be faster sometimes?
+
+        `seq` should be a dict with the each of the keys as described in this
+        class's docstring corresponding to separated input sequences for the
+        different components. This function returns a similarly structured dict
+        where each key corresponds to the categorical likelihoods of the next
+        item for each component.
+        """
+        with tf.name_scope(name):
+            encoded = self._glue_notes(seq)
+
+            gc_embedding = self._embed_gc(global_condition)
+            raw_output = self._create_generator(encoded, gc_embedding)
+            out = self._unglue_notes(raw_output)
+            logits = {k: tf.reshape(v[-1, :], [-1]) for k, v in out.items()}
+            return {
+                k: tf.cast(tf.nn.softmax(tf.cast(v, tf.float64)), tf.float32)
+                for k, v in logits.items()
+            }
+
+    # NOTE: should move to just passing in streams of ints
+    def midinet_loss(self, net_out, targets):
+        """Get the loss"""
+        # first cut the padding off and put the batches in sequence
+        target_output = {
+            k: tf.reshape(v[:, self.receptive_field:, :],
+                          [-1, self.component_sizes[k]])
+            for k, v in targets.items()
+        }
+        predictions = {
+            k: tf.reshape(v, [-1, self.component_sizes[k]])
+            for k, v in net_out.items()
+        }
+        loss = {
+            k: tf.nn.softmax_cross_entropy_with_logits(
+                logits=predictions[k], labels=target_output[k])
+            for k in targets
+        }
+        _ = [
+            tf.summary.scalar('loss/{}'.format(k), tf.reduce_mean(v))
+            for k, v in loss.items()
+        ]
+        total_loss = tf.reduce_mean(tf.add_n(list(loss.values())))
+
+        tf.summary.scalar('loss/total', total_loss)
+        return total_loss
+
+    def loss(self,
+             batched_input,
+             global_condition_batch=None,
+             l2_regularization_strength=None,
+             name='midinet'):
+        """
+        Create a MidiNet and return the autoencoding loss.
+
+        Inputs should be batched up with individual one-hots per note component.
+
+        Returns a tuple of losses: the first is the total loss to be minimised
+        and the second is just the total cross entropies without any
+        regularisers. This is returned for convenient logging, appropriate
+        summaries will always be added.
+        """
+        with tf.name_scope(name):
+            all_input = self._glue_notes(batched_input)
+            gc_embedding = self._embed_gc(global_condition_batch)
+
+            # should cut the last sample of the input so it can't cheat
+            network_input = all_input[:, :-1, :]
+            raw_output = self._create_network(network_input, gc_embedding)
+            net_out = self._unglue_notes(raw_output)
+
+            xent_loss = self.midinet_loss(net_out, batched_input)
+
+            if l2_regularization_strength:
+                l2_loss = tf.add_n([
+                    tf.nn.l2_loss(v) for v in tf.trainable_variables()
+                    if bias not in v.name
+                ])
+                loss = xent_loss + l2_regularisation_strength * l2_loss
+                tf.summary.scalar('loss/l2', l2_loss)
+            else:
+                loss = xent_loss
+
+            return loss, xent_loss
